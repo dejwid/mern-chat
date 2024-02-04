@@ -1,0 +1,58 @@
+name:        "Mern Stack Acorn"
+description: "Acorn running a simple MERN stack app"
+readme:      "./README.md"
+icon:        "./mern.png"
+
+
+args: {
+  mongodbname: "mongodb"
+}
+
+services: db: {
+    image: "ghcr.io/acorn-io/mongodb:v6.0-2"
+    serviceArgs: {
+      dbName: args.mongodbname
+  }
+}
+containers: {
+    server: {
+        build: {
+        context:    "./server"
+        dockerfile: "./server/Dockerfile"
+        }
+        dirs: "/usr/src/app": "./server"
+        ports: publish: "5050:5050/http"
+        if args.dev{
+            dirs: {
+            "/usr/src/app": "./server"
+            }
+        }
+        env: {
+            DB_HOST: "@{service.db.address}"
+            DB_PORT: "@{service.db.port.27017}"
+            DB_NAME: "@{service.db.data.dbName}"
+            DB_USER: "@{service.db.secrets.admin.username}"
+            DB_PASS: "@{service.db.secrets.admin.password}"
+        }
+        consumes: ["db"]
+    }
+    client: {
+        build: {
+        context:    "./client"
+        dockerfile: "./client/Dockerfile"
+        }
+        memory: 1536Mi
+        dirs: "/usr/src/app": "./client"
+        ports: publish: "3000:3000/http"
+        env: {
+            REACT_APP_SERVER_HOST: "@{services.server.endpoint}"
+        }
+        if args.dev{
+            dirs: {
+            "/usr/src/app": "./client"
+            }
+        }
+        dependsOn: ["server"]
+    }
+
+}
